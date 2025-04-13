@@ -12,7 +12,7 @@ app.listen(PORT, () => {
 
 // CORS configuration
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: 'https://mithilaeats.com', // replace with your actual frontend URL
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type'],
 }));
