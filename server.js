@@ -59,3 +59,4 @@ app.post('/checkout', (req, res) => {
     res.status(200).json({ message: 'Order placed successfully', orderId: result.insertId });
   });
 });
+console.log("🔁 Triggering Railway deploy");
