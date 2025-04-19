@@ -1,62 +1,70 @@
 const express = require('express');
 const cors = require('cors');
-const mysql = require('mysql2');
+const mysql = require('mysql2/promise');
 const bodyParser = require('body-parser');
+require("dotenv").config();
 
 const app = express();
-//const PORT = 5000;
 const PORT = process.env.PORT || 8081;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
-});
 
-// CORS configuration
+// CORS configuration for your custom domain
 app.use(cors({
-  origin: 'https://mithilaeats.com', // replace with your actual frontend URL
+  origin: ['https://mithilaeats.com', 'https://www.mithilaeats.com'],
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type'],
 }));
 
-// Parse JSON request bodies
 app.use(bodyParser.json());
 
-// MySQL connection
-const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT || 3306
-});
+// Async function to initialize database and routes
+async function init() {
+  try {
+    // Create MySQL connection
+    const db = await mysql.createConnection({
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      port: process.env.DB_PORT || 3306,
+    });
 
-db.connect((err) => {
-  if (err) {
-    console.error('MySQL Connection Failed:', err);
-  } else {
     console.log('✅ Connected to MySQL Database');
+
+    // Root route
+    app.get("/", (req, res) => {
+      return res.json("🚀 MithilaEats backend is running!");
+    });
+
+    // Checkout API
+    app.post("/checkout", async (req, res) => {
+      const { name, address, pincode, mobile, paymentMethod, totalAmount } = req.body;
+
+      if (!name || !address || !pincode || !mobile || !paymentMethod || !totalAmount) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      try {
+        const [result] = await db.execute(
+          "INSERT INTO orders (name, address, pincode, mobile, payment_method, total_amount) VALUES (?, ?, ?, ?, ?, ?)",
+          [name, address, pincode, mobile, paymentMethod, totalAmount]
+        );
+
+        return res.status(201).json({ message: "Order placed", orderId: result.insertId });
+      } catch (err) {
+        console.error("DB Error:", err);
+        return res.status(500).json({ message: "Database error" });
+      }
+    });
+
+    // Start the server after DB connects
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running at http://localhost:${PORT}`);
+    });
+
+  } catch (err) {
+    console.error("❌ Failed to connect to MySQL Database:", err);
   }
-});
-app.get("/", (req, res) => {
-    return res.json("🚀 MithilaEats backend is running!");
-});
+}
 
-// API to handle checkout
-app.post('/checkout', (req, res) => {
-  const { name, address, pincode, mobile, paymentMethod, totalAmount } = req.body;
-
-  if (!name || !address || !pincode || !mobile || !paymentMethod || !totalAmount) {
-    return res.status(400).json({ message: 'Please provide all required fields' });
-  }
-
-  const sql = 'INSERT INTO orders (name, address, pincode, mobile, payment_method, total_amount) VALUES (?, ?, ?, ?, ?, ?)';
-
-  db.query(sql, [name, address, pincode, mobile, paymentMethod, totalAmount], (err, result) => {
-    if (err) {
-      console.error('Error inserting order:', err);
-      return res.status(500).json({ message: 'Error placing order' });
-    }
-
-    res.status(200).json({ message: 'Order placed successfully', orderId: result.insertId });
-  });
-});
-console.log("🔁 Triggering Railway deploy");
+// Call the init function
+init();
