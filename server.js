@@ -50,9 +50,9 @@ async function init() {
         );
 
         return res.status(201).json({ message: "Order placed", orderId: result.insertId });
-      } catch (err) {
-        console.error("DB Error:", err);
-        return res.status(500).json({ message: "Database error" });
+      } catch (error) {
+        console.error("Error saving order to database:", error);
+        res.status(500).json({ message: "Database error", error: error.message });
       }
     });
 
